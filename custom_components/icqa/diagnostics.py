@@ -48,6 +48,9 @@ def _build_diagnostics(
         if coordinator.last_payload and coordinator.last_payload.generated_at
         else None
     )
+    last_fetch_at = (
+        coordinator.last_fetch_at.isoformat() if coordinator.last_fetch_at else None
+    )
     return {
         "entry": async_redact_data(
             {
@@ -61,6 +64,7 @@ def _build_diagnostics(
             "url": ICQA_API_URL,
             "update_interval_minutes": 30,
             "last_update_success": coordinator.last_update_success,
+            "last_fetch_at": last_fetch_at,
             "payload_generated_at": payload_generated_at,
         },
         "station": station.as_dict(),

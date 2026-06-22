@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 import re
 from typing import Any, Self
 from zoneinfo import ZoneInfo
 
 LOCAL_TZ = ZoneInfo("Europe/Madrid")
+NO_MEASUREMENT_QUALITIES = {"no_mesura", "no_disponible"}
 
 
 @dataclass(frozen=True)
@@ -25,11 +26,12 @@ class HistoricReading:
     def from_api(cls, data: dict[str, Any]) -> Self:
         """Create a historic reading from an API dictionary."""
         raw_value = _as_str_or_none(data.get("valor"))
+        quality = normalize_quality(data.get("qualitat2021"))
         return cls(
             period=_as_str_or_none(data.get("data")) or "",
-            value=parse_numeric_value(raw_value),
+            value=parse_measurement_value(raw_value, quality),
             raw_value=raw_value,
-            quality=normalize_quality(data.get("qualitat2021")),
+            quality=quality,
             legacy_quality=normalize_quality(data.get("qualitat")),
         )
 
@@ -81,19 +83,20 @@ class ContaminantReading:
         """Create a contaminant reading from an API dictionary."""
         abbr = normalize_contaminant_abbr(data.get("abbr"))
         raw_value = _as_str_or_none(data.get("valor"))
+        quality = normalize_quality(data.get("qualitat2021"))
         history = tuple(
             HistoricReading.from_api(item)
-            for item in data.get("historic", [])
+            for item in data.get("historic") or []
             if isinstance(item, dict)
         )
         return cls(
             id=_as_str_or_none(data.get("id")) or slugify_key(abbr),
             abbr=abbr,
             name=localized_name(data.get("nom"), abbr),
-            value=parse_numeric_value(raw_value),
+            value=parse_measurement_value(raw_value, quality),
             raw_value=raw_value,
             unit=normalize_unit(data.get("um")),
-            quality=normalize_quality(data.get("qualitat2021")),
+            quality=quality,
             legacy_quality=normalize_quality(data.get("qualitat")),
             history=history,
         )
@@ -218,6 +221,11 @@ class Station:
             "data_actualitzacio": self.updated_at.isoformat()
             if self.updated_at
             else None,
+            "data_actualitzacio_local": self.updated_at.astimezone(
+                LOCAL_TZ
+            ).isoformat()
+            if self.updated_at
+            else None,
             "data_installacio": self.installed_on.isoformat()
             if self.installed_on
             else None,
@@ -312,13 +320,27 @@ def parse_numeric_value(value: Any) -> float | None:
         return None
 
 
+def parse_measurement_value(value: Any, quality: str | None = None) -> float | None:
+    """Parse a pollutant measurement, excluding unavailable sentinel values."""
+    numeric_value = parse_numeric_value(value)
+    if quality in NO_MEASUREMENT_QUALITIES:
+        return None
+    if numeric_value is not None and numeric_value < 0:
+        return None
+    return numeric_value
+
+
 def parse_payload_datetime(value: Any) -> datetime | None:
     """Parse the payload timestamp format YYYYMMDDHHMM."""
     text = _as_str_or_none(value)
     if not text:
         return None
     try:
-        return datetime.strptime(text, "%Y%m%d%H%M").replace(tzinfo=LOCAL_TZ)
+        return (
+            datetime.strptime(text, "%Y%m%d%H%M")
+            .replace(tzinfo=LOCAL_TZ)
+            .astimezone(UTC)
+        )
     except ValueError:
         return None
 
@@ -329,7 +351,11 @@ def parse_datetime(value: Any) -> datetime | None:
     if not text:
         return None
     try:
-        return datetime.strptime(text, "%d/%m/%Y %H:%M").replace(tzinfo=LOCAL_TZ)
+        return (
+            datetime.strptime(text, "%d/%m/%Y %H:%M")
+            .replace(tzinfo=LOCAL_TZ)
+            .astimezone(UTC)
+        )
     except ValueError:
         return None
 

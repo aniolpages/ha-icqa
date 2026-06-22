@@ -23,6 +23,9 @@
       "altitude": {
         "name": "Altitud"
       },
+      "data_timestamp": {
+        "name": "Hora de les dades ICQA"
+      },
       "installation_date": {
         "name": "Data d'instal·lació"
       },

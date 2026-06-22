@@ -33,7 +33,7 @@ from .const import (
     QUALITY_OPTIONS,
 )
 from .coordinator import ICQADataUpdateCoordinator
-from .models import ContaminantReading, Station
+from .models import LOCAL_TZ, ContaminantReading, Station
 
 POLLUTANT_ICONS = {
     "C6H6": "mdi:molecule",
@@ -69,6 +69,7 @@ async def async_setup_entry(
     entities: list[SensorEntity] = [
         ICQAStationQualitySensor(coordinator),
         ICQALastUpdateSensor(coordinator),
+        ICQADataTimestampSensor(coordinator),
     ]
 
     if station.installed_on is not None:
@@ -135,6 +136,7 @@ class ICQAStationQualitySensor(ICQAEntity, SensorEntity):
 class ICQAPollutantSensor(ICQAEntity, SensorEntity):
     """Sensor for a pollutant concentration."""
 
+    _attr_force_update = True
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_translation_key = "pollutant_concentration"
 
@@ -150,6 +152,10 @@ class ICQAPollutantSensor(ICQAEntity, SensorEntity):
         self._attr_device_class = POLLUTANT_DEVICE_CLASSES.get(reading.abbr)
         self._attr_icon = POLLUTANT_ICONS.get(reading.abbr, "mdi:molecule")
         self._attr_native_unit_of_measurement = _home_assistant_unit(reading.unit)
+        self._attr_suggested_display_precision = _suggested_display_precision(
+            reading.raw_value,
+            self._attr_native_unit_of_measurement,
+        )
         self._attr_translation_placeholders = {"pollutant": self._name}
         self._attr_unique_id = (
             f"{coordinator.station_id}_{reading.unique_key}_concentration"
@@ -187,6 +193,11 @@ class ICQAPollutantSensor(ICQAEntity, SensorEntity):
         }
         if self.coordinator.data.updated_at:
             attrs[ATTR_UPDATED_AT] = self.coordinator.data.updated_at.isoformat()
+            attrs["data_actualitzacio_local"] = (
+                self.coordinator.data.updated_at.astimezone(LOCAL_TZ).isoformat()
+            )
+        if self.coordinator.last_fetch_at:
+            attrs["ultima_consulta"] = self.coordinator.last_fetch_at.isoformat()
         return {key: value for key, value in attrs.items() if value is not None}
 
     @property
@@ -196,7 +207,7 @@ class ICQAPollutantSensor(ICQAEntity, SensorEntity):
 
 
 class ICQALastUpdateSensor(ICQAEntity, SensorEntity):
-    """Diagnostic sensor for the station update time."""
+    """Diagnostic sensor for the latest successful integration update."""
 
     _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -210,8 +221,41 @@ class ICQALastUpdateSensor(ICQAEntity, SensorEntity):
 
     @property
     def native_value(self) -> Any:
-        """Return the station update timestamp."""
+        """Return the latest successful fetch timestamp."""
+        return self.coordinator.last_fetch_at
+
+
+class ICQADataTimestampSensor(ICQAEntity, SensorEntity):
+    """Diagnostic sensor for the ICQA station data timestamp."""
+
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:database-clock-outline"
+    _attr_translation_key = "data_timestamp"
+
+    def __init__(self, coordinator: ICQADataUpdateCoordinator) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.station_id}_data_timestamp"
+
+    @property
+    def native_value(self) -> Any:
+        """Return the ICQA station data timestamp."""
         return self.coordinator.data.updated_at
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return timestamp metadata."""
+        attrs: dict[str, Any] = {}
+        if self.coordinator.data.updated_at:
+            attrs["data_actualitzacio_local"] = (
+                self.coordinator.data.updated_at.astimezone(LOCAL_TZ).isoformat()
+            )
+        if self.coordinator.last_payload and self.coordinator.last_payload.generated_at:
+            attrs["data_generacio_payload"] = (
+                self.coordinator.last_payload.generated_at.isoformat()
+            )
+        return attrs
 
 
 class ICQAInstallationDateSensor(ICQAEntity, SensorEntity):
@@ -272,3 +316,17 @@ def _home_assistant_unit(unit: str | None) -> str | None:
     if normalized == "mg/m3":
         return CONCENTRATION_MILLIGRAMS_PER_CUBIC_METER
     return unit
+
+
+def _suggested_display_precision(raw_value: str | None, unit: str | None) -> int | None:
+    """Return a stable display precision for pollutant values."""
+    if raw_value is None:
+        return None
+    text = raw_value.strip().replace(",", ".")
+    if "." not in text:
+        return 1 if unit == CONCENTRATION_MILLIGRAMS_PER_CUBIC_METER else 0
+
+    decimal_part = text.rsplit(".", maxsplit=1)[1].rstrip("0")
+    if not decimal_part:
+        return 1 if unit == CONCENTRATION_MILLIGRAMS_PER_CUBIC_METER else 0
+    return min(max(len(decimal_part), 1), 3)
