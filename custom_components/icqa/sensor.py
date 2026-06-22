@@ -207,7 +207,7 @@ class ICQAPollutantSensor(ICQAEntity, SensorEntity):
 
 
 class ICQALastUpdateSensor(ICQAEntity, SensorEntity):
-    """Diagnostic sensor for the latest ICQA payload update."""
+    """Diagnostic sensor for the latest successful integration update."""
 
     _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -221,9 +221,7 @@ class ICQALastUpdateSensor(ICQAEntity, SensorEntity):
 
     @property
     def native_value(self) -> Any:
-        """Return the timestamp published by the ICQA API payload."""
-        if self.coordinator.last_payload and self.coordinator.last_payload.generated_at:
-            return self.coordinator.last_payload.generated_at
+        """Return the latest successful fetch timestamp."""
         return self.coordinator.last_fetch_at
 
     @property
@@ -256,7 +254,9 @@ class ICQADataTimestampSensor(ICQAEntity, SensorEntity):
 
     @property
     def native_value(self) -> Any:
-        """Return the ICQA station data timestamp."""
+        """Return the timestamp published by the ICQA API payload."""
+        if self.coordinator.last_payload and self.coordinator.last_payload.generated_at:
+            return self.coordinator.last_payload.generated_at
         return self.coordinator.data.updated_at
 
     @property
@@ -264,12 +264,18 @@ class ICQADataTimestampSensor(ICQAEntity, SensorEntity):
         """Return timestamp metadata."""
         attrs: dict[str, Any] = {}
         if self.coordinator.data.updated_at:
-            attrs["data_actualitzacio_local"] = (
+            attrs["data_estacio"] = self.coordinator.data.updated_at.isoformat()
+            attrs["data_estacio_local"] = (
                 self.coordinator.data.updated_at.astimezone(LOCAL_TZ).isoformat()
             )
         if self.coordinator.last_payload and self.coordinator.last_payload.generated_at:
             attrs["data_generacio_payload"] = (
                 self.coordinator.last_payload.generated_at.isoformat()
+            )
+            attrs["data_generacio_payload_local"] = (
+                self.coordinator.last_payload.generated_at.astimezone(
+                    LOCAL_TZ
+                ).isoformat()
             )
         return attrs
 

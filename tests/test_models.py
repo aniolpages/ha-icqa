@@ -56,7 +56,7 @@ class ICQAModelsTest(unittest.TestCase):
         """The parser keeps stable station IDs and Catalan pollutant names."""
         data = models.parse_icqa_payload(
             {
-                "fecha": "202606221500",
+                "fecha": "202606221900",
                 "features": [
                     {
                         "type": "Feature",
@@ -65,7 +65,7 @@ class ICQAModelsTest(unittest.TestCase):
                             "id": "ES0001A",
                             "nom": "Barcelona (Prova)",
                             "localitat": "Barcelona",
-                            "dataActualitzacio": "22/06/2026 15:00",
+                            "dataActualitzacio": "22/06/2026 18:00",
                             "dataInst": "01/01/1993",
                             "qualitat2021": "bona",
                             "contaminants": [
@@ -109,15 +109,15 @@ class ICQAModelsTest(unittest.TestCase):
         self.assertEqual(station.zone_name, "Àrea de Barcelona")
         self.assertEqual(
             station.updated_at,
-            models.datetime(2026, 6, 22, 13, 0, tzinfo=UTC),
+            models.datetime(2026, 6, 22, 16, 0, tzinfo=UTC),
         )
         self.assertEqual(
             station.station_attributes()["data_actualitzacio_local"],
-            "2026-06-22T15:00:00+02:00",
+            "2026-06-22T18:00:00+02:00",
         )
         self.assertEqual(
             data.generated_at,
-            models.datetime(2026, 6, 22, 13, 0, tzinfo=UTC),
+            models.datetime(2026, 6, 22, 17, 0, tzinfo=UTC),
         )
         self.assertEqual(station.readings["PM10"].name, "Partícules PM10")
         self.assertEqual(station.readings["PM10"].unit, "µg/m³")
