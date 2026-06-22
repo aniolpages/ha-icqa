@@ -1,0 +1,14 @@
+{
+  "codeowners": [
+    "@aniolpages"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/aniolpages/ha-icqa",
+  "domain": "icqa",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/aniolpages/ha-icqa/issues",
+  "name": "ICQA Catalunya",
+  "requirements": [],
+  "version": "0.1.0"
+}

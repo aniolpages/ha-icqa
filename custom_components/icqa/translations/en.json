@@ -1,0 +1,52 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "This station is already configured.",
+      "cannot_connect": "The ICQA data could not be fetched. Try again later.",
+      "no_stations": "No station was found in the ICQA data."
+    },
+    "error": {
+      "invalid_station": "The selected station is not valid."
+    },
+    "step": {
+      "user": {
+        "data": {
+          "station_id": "Station"
+        },
+        "description": "Select the air-quality station you want to add to Home Assistant.",
+        "title": "Configure an ICQA station"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "altitude": {
+        "name": "Altitude"
+      },
+      "installation_date": {
+        "name": "Installation date"
+      },
+      "last_update": {
+        "name": "Last update"
+      },
+      "pollutant_concentration": {
+        "name": "{pollutant} concentration"
+      },
+      "station_quality": {
+        "name": "Air quality",
+        "state": {
+          "bona": "Good",
+          "desfavorable": "Unfavorable",
+          "extremadament_desfavorable": "Extremely unfavorable",
+          "molt_desfavorable": "Very unfavorable",
+          "no_disponible": "Unavailable",
+          "no_mesura": "Not measured",
+          "pobre": "Poor",
+          "raonablement_bona": "Reasonably good",
+          "regular": "Regular"
+        }
+      }
+    }
+  },
+  "title": "ICQA Catalunya"
+}
