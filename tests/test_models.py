@@ -33,6 +33,25 @@ class ICQAModelsTest(unittest.TestCase):
         self.assertIsNone(models.parse_measurement_value("-1.0", "bona"))
         self.assertEqual(models.parse_measurement_value("0,2", "bona"), 0.2)
 
+    def test_api_timestamps_use_europe_madrid_dst_rules(self) -> None:
+        """API timestamps are local Europe/Madrid clock values."""
+        self.assertEqual(
+            models.parse_payload_datetime("202606221900"),
+            models.datetime(2026, 6, 22, 17, 0, tzinfo=UTC),
+        )
+        self.assertEqual(
+            models.parse_payload_datetime("202601221900"),
+            models.datetime(2026, 1, 22, 18, 0, tzinfo=UTC),
+        )
+        self.assertEqual(
+            models.parse_datetime("22/06/2026 19:00"),
+            models.datetime(2026, 6, 22, 17, 0, tzinfo=UTC),
+        )
+        self.assertEqual(
+            models.parse_datetime("22/01/2026 19:00"),
+            models.datetime(2026, 1, 22, 18, 0, tzinfo=UTC),
+        )
+
     def test_parse_payload_uses_station_id_and_catalan_names(self) -> None:
         """The parser keeps stable station IDs and Catalan pollutant names."""
         data = models.parse_icqa_payload(

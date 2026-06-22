@@ -207,7 +207,7 @@ class ICQAPollutantSensor(ICQAEntity, SensorEntity):
 
 
 class ICQALastUpdateSensor(ICQAEntity, SensorEntity):
-    """Diagnostic sensor for the latest successful integration update."""
+    """Diagnostic sensor for the latest ICQA payload update."""
 
     _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -221,8 +221,24 @@ class ICQALastUpdateSensor(ICQAEntity, SensorEntity):
 
     @property
     def native_value(self) -> Any:
-        """Return the latest successful fetch timestamp."""
+        """Return the timestamp published by the ICQA API payload."""
+        if self.coordinator.last_payload and self.coordinator.last_payload.generated_at:
+            return self.coordinator.last_payload.generated_at
         return self.coordinator.last_fetch_at
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return update metadata."""
+        attrs: dict[str, Any] = {}
+        if self.coordinator.last_payload and self.coordinator.last_payload.generated_at:
+            attrs["data_generacio_payload_local"] = (
+                self.coordinator.last_payload.generated_at.astimezone(
+                    LOCAL_TZ
+                ).isoformat()
+            )
+        if self.coordinator.last_fetch_at:
+            attrs["ultima_consulta"] = self.coordinator.last_fetch_at.isoformat()
+        return attrs
 
 
 class ICQADataTimestampSensor(ICQAEntity, SensorEntity):
